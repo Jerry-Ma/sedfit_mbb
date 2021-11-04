@@ -40,6 +40,8 @@ class SEDFitConf(object):
     filedefs = [
             ('cat_in', None), ('cat_out', None),
             ('temp_out', None),
+            ('mdl_wls', None),
+            ('mdl_flux_cols', None),
             ]
     seddefs = [
             ('id_col', None), ('z_col', None), ('t_col', 't'),
@@ -54,6 +56,7 @@ class SEDFitConf(object):
             ('leg_z_fmt', "{:s}"),
             ('leg_t_fmt', "{:s}"),
             ('leg_loc', "upper left"),
+            ("plot_mdl_flux", False),
             ]
     runtime = [
         ('unpack', True), ('unpack_dir', 'temp_unpacked'),
@@ -90,6 +93,15 @@ class SEDFitConf(object):
         return 'config load from {0}:\n'.format(
                 sys.modules['__main__'].__file__) + \
             '\n'.join(result) + '.' * 80
+
+    def get_mdl_flux_info(self):
+        mdl_wls = np.array(self.mdl_wls + self.sed_wls)
+        mdl_flux_cols = self.mdl_flux_cols + self.sed_flux_cols
+        # sort the wl and cols
+        i_wls = np.argsort(mdl_wls)
+        mdl_wls = mdl_wls[i_wls]
+        mdl_flux_cols = [f'm_{mdl_flux_cols[i]}' for i in i_wls]
+        return mdl_wls, mdl_flux_cols
 
 
 def configure(config, args):
@@ -169,8 +181,27 @@ def batch_fit_mbb(config, option):
     bestfit = fitter.batch_fit(wls, ids, seds, errs, zs, ts=ts, verbose=False)
     elapsed_time = timedelta(seconds=time.time() - timestamp)
     logger.info('finished @ {0}'.format(elapsed_time))
+    # generate model flux cols
+    mdl_wls, mdl_flux_cols = config.get_mdl_flux_info()
+    mdl_fluxes = []
+    for wl in mdl_wls:
+        fluxes = []
+        for i in range(len(bestfit)):
+            entry = bestfit[i]
+            fluxes.append(
+                mbb.MBB.mbb_lir_z(
+                    wl,
+                    entry['m_lir'],
+                    entry['m_t'],
+                    config.beta,
+                    config.lambda0,
+                    entry['m_z']))
+        mdl_fluxes.append(fluxes)
+    mdl_fluxes = np.core.records.fromarrays(mdl_fluxes, names=mdl_flux_cols)
+    print(mdl_fluxes)
     # save the results
-    result = rfn.merge_arrays([cat_in, bestfit], flatten=True, usemask=False)
+    result = rfn.merge_arrays(
+        [cat_in, bestfit, mdl_fluxes], flatten=True, usemask=False)
     np.savetxt(config.cat_out, result, header=' '.join(result.dtype.names),
                fmt='%s', encoding='utf-8')
     logger.info('result saved to {0}'.format(config.cat_out))

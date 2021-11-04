@@ -52,6 +52,10 @@ def plot_fit(ax, entry, config):
     else:
         lbl_sed += '\nT_{{mbb}}={0:s} K'.format(
             'N/A' if t < 0 else config.leg_t_fmt.format(t))
+    for mdl_wl, mdl_flux_col in zip(config.mdl_wls, config.mdl_flux_cols):
+        lbl_sed += '\nS_{{{:.0f}um}}={:.2f} mJy'.format(
+            float(mdl_wl), entry[f'm_{mdl_flux_col}']
+            )
     print(lbl_sed)
     lbl_sed = ts.tt(lbl_sed)
 
@@ -61,6 +65,10 @@ def plot_fit(ax, entry, config):
                         color=sc.green, mec=sc.green,
                         elinewidth=1.0,
                         mew=1.0,
+                        zorder=3)
+    pltkw_mdlsed = dict(marker='o', ms=6, fillstyle='none',
+                        color=sc.violet, mec=sc.violet,
+                        linestyle='none',
                         zorder=2)
     legkw_temp = dict(loc='lower center',
                       ncol=1,
@@ -71,8 +79,11 @@ def plot_fit(ax, entry, config):
                      handletextpad=0,
                      handlelength=0.5)
     ax.set_xscale('log')
-    xlim_min = np.min(fitwl) * 0.5
-    xlim_max = np.max(fitwl) * 2.0
+
+    mdl_wls, mdl_flux_cols = config.get_mdl_flux_info()
+
+    xlim_min = np.min(mdl_wls) * 0.5
+    xlim_max = np.max(mdl_wls) * 2.0
     ax.set_xlim((xlim_min, xlim_max))
     # ax.set_xlim((60, 1000))
     ax.set_yscale('log')
@@ -84,7 +95,7 @@ def plot_fit(ax, entry, config):
     ax.errorbar(fitwl, fitsed, yerr=fiterr, **pltkw_fitsed)
     if entry['m_chi2'] > 0:
         # get template by call the MBB class method
-        temp_wl = np.logspace(np.log10(xlim_min), 3, 500)
+        temp_wl = np.logspace(np.log10(xlim_min), 4, 500)
         temp_flux = MBB.mbb_lir_z(
                 temp_wl, entry['m_lir'], entry['m_t'],
                 config.beta, config.lambda0, entry['m_z'])
@@ -96,6 +107,12 @@ def plot_fit(ax, entry, config):
         for ib in cb._children:
             ib.align = "center"
         leg.legendPatch.set_alpha(0)
+        # mdl flux
+        if config.plot_mdl_flux:
+            ax.plot(
+                mdl_wls,
+                [entry[c] for c in mdl_flux_cols], **pltkw_mdlsed)
+
     else:
         leg = None
     dummy = matplotlib.patches.Rectangle((1, 1), 1, 1, fill=False,
