@@ -29,6 +29,10 @@ sed_wls = [100., 160., 246.1857, 346.161275, 490.7388]
 sed_flux_cols = ['F100', 'F160', 'F250', 'F350', 'F500']
 # column names of the SED flux uncertainty [mJy]
 sed_err_cols = ['E100', 'E160', 'E250', 'E350', 'E500']
+# wavelengths [micron] of additional output model fluxes 
+mdl_wls = [850.]
+# column names of output model fluxes.
+mdl_flux_cols = ['F850']
 # ------------- #
 #  SED fitting  #
 # ------------- #

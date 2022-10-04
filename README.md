@@ -12,7 +12,7 @@ $ tar -zxvf /path/to/the/source/code/tarball
 2. install python dependency packages
 
 ```
-$ pip2 install -r requirements.txt
+$ pip3 install -r requirements.txt
 ```
 
 3. edit sedfit_example.py, to change the import path of the package:
