@@ -90,7 +90,7 @@ class MBB(object):
                                   min=0., max=3.,
                                   vary=beta is None)
         self.model.set_param_hint('lam0', value=lam0, vary=False)
-        self.model.set_param_hint('z', value=1., min=1e-4, max=5., vary=True)
+        self.model.set_param_hint('z', value=1., min=1e-4, max=20, vary=True)
         # self.model.set_param_hint('lir',
         #                           expr='getlir(reff, tmbb, beta, lam0)')
         self.model.set_param_hint(
@@ -180,7 +180,7 @@ class MBB(object):
             fitresult = None
         else:
             self.init_pars['z'].set(vary=z < 0, value=1. if z < 0 else z,
-                                    min=1e-4, max=6)
+                                    min=1e-4, max=20)
             if t is None:
                 t = -1
             self.init_pars['tmbb'].set(vary=t < 0, value=30. if t < 0 else t,
