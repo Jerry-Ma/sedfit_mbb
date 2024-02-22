@@ -322,6 +322,14 @@ class MBB(object):
         return cls.mbb(si['c'] * 1e6 / nu, reff, tmbb, beta, lam0)
 
     @classmethod
+    def _idl_planck(cls, wave, temp):
+        w = wave * 100  # cm
+        c1 =  3.7417749e-5 # 2*!DPI*h*c*c       
+        c2 =  1.4387687    # h*c/k
+        val =  c2/w/temp
+        return c1 / (w ** 5 * np.expm1(val)) * 1e-8
+
+    @classmethod
     def get_mdust(cls, z, lir, tmbb, beta, lam0, lir_err, tmbb_err):
         # this uses the 850um calibration kappa=0.15m^2kg^{-1}
         # see Casey+ 2012 Eq.8
@@ -330,11 +338,22 @@ class MBB(object):
         siwl = wl * 1e-6  # m
         bb = 2. * np.pi * si['h'] * si['c'] / siwl ** 3 / \
             np.expm1(si['c'] * si['h'] / si['k'] / siwl / tmbb)  # W/m2/Hz
-        snu = cls.mbb_lir_z(wl, lir, tmbb, beta, lam0, z) / 1e29  # W/m2/Hz
+        # bb2 = cls._idl_planck(siwl, tmbb) * 1e-7 * 1e4 * (siwl * 1e10) ** 2 / (si['c'] * 1e10)
+        snu = cls.mbb_lir_z(wl, lir, tmbb, beta, lam0, z)  # mJy
+        # print(f"fit_s850: {snu}")
+        snu = snu / 1e31  # W/m2/Hz
         dl = cls.properdist(z) * (1 + z)
-        mdust = snu * dl ** 2 / kappa / bb / (1 + z) / au['msol']
+        mdust1 = snu * dl ** 2 / kappa / bb / (1 + z) / au['msol']
+        # planck = cls._idl_planck(siwl, tmbb)
+        # mdust2 = (
+        #     np.log10(snu) + 2 * np.log10(dl)
+        #     - np.log10(kappa) - np.log10(planck) + 3
+        #     - 2 * np.log10(siwl * 1e10) + np.log10(si['c'] * 1e10)
+        #     - np.log10(au['msol'])
+        # )
+        mdust = mdust1
         # mdust \propto Lir * T^ -5
-        mdust_err = mdust * np.sqrt((lir_err) ** 2 + 5 * (tmbb_err / tmbb) ** 2)
+        mdust_err = np.log10(np.e) * mdust * np.sqrt((lir_err) ** 2 + 5 * (tmbb_err / tmbb) ** 2)
         return np.log10(mdust), (mdust_err / mdust)
 
     @classmethod
