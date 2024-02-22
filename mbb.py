@@ -108,13 +108,13 @@ class MBB(object):
         '''Return whether the input SED is legible and if so
         the valid photometry data mask'''
         good = (sed >= err) & (err > 0)
-        return len(sed[good]) >= 3, good
+        return len(sed[good]) >= 2, good
 
     def batch_fit(self, wls, ids, seds, errs, zs, ts=None, verbose=True):
         '''Perform MBB fitting to a set of SEDs'''
         result = []
         nband, nobj = len(wls), len(ids)
-        wls = np.array(np.asarray(wls).view(dtype='d'))
+        wls = np.array(np.asarray(wls).tolist(), dtype='d')
         seds = np.array(seds.tolist(), dtype='d').reshape(nobj, nband)
         errs = np.array(errs.tolist(), dtype='d').reshape(nobj, nband)
         # errs = np.asarray(errs).view(dtype='d').reshape(nobj, nband)
@@ -213,7 +213,12 @@ class MBB(object):
                 if verbose:
                     self.logger.info(fitresult.fit_report())
                 chi2 = fitresult.redchi
-                md, mderr = -1, -1
+                # md, mderr = -1, -1
+                md, mderr = self.get_mdust(
+                    bv['z'],
+                    bv['lir'], bv['tmbb'], bv['beta'], bv['lam0'],
+                    be['lir'], be['tmbb']
+                )
                 z = bv['z']
                 dl = self.properdist(z) * (1 + z)
                 lfir = self.get_lir(
@@ -315,6 +320,22 @@ class MBB(object):
     def _mbb_nu(cls, nu, reff, tmbb, beta, lam0):
         '''For computing integral, we need nu (Hz) and convert it to wl (um)'''
         return cls.mbb(si['c'] * 1e6 / nu, reff, tmbb, beta, lam0)
+
+    @classmethod
+    def get_mdust(cls, z, lir, tmbb, beta, lam0, lir_err, tmbb_err):
+        # this uses the 850um calibration kappa=0.15m^2kg^{-1}
+        # see Casey+ 2012 Eq.8
+        kappa = 0.15  # m2 / kg
+        wl = 850.
+        siwl = wl * 1e-6  # m
+        bb = 2. * np.pi * si['h'] * si['c'] / siwl ** 3 / \
+            np.expm1(si['c'] * si['h'] / si['k'] / siwl / tmbb)  # W/m2/Hz
+        snu = cls.mbb_lir_z(wl, lir, tmbb, beta, lam0, z) / 1e29  # W/m2/Hz
+        dl = cls.properdist(z) * (1 + z)
+        mdust = snu * dl ** 2 / kappa / bb / (1 + z) / au['msol']
+        # mdust \propto Lir * T^ -5
+        mdust_err = mdust * np.sqrt((lir_err) ** 2 + 5 * (tmbb_err / tmbb) ** 2)
+        return np.log10(mdust), (mdust_err / mdust)
 
     @classmethod
     def get_lir(cls, reff, tmbb, beta, lam0, wllo=8, wlup=1000):
