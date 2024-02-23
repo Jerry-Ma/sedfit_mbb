@@ -55,13 +55,13 @@ class MBB(object):
 
     out_para_key = ['m_z', 'm_zerr', 'm_dl',
                     'm_lir', 'm_lirerr',
-                    'm_lfir',
+                    'm_lfir', 'm_lfirerr',
                     'm_t', 'm_terr',
                     'm_r', 'm_rerr', 'm_md', 'm_mderr', 'm_id', 'm_chi2',
                     'm_cov11', 'm_cov12', 'm_cov21', 'm_cov22']
     out_para_type = ['d', 'd', 'd',
                      'd', 'd',
-                     'd',
+                     'd', 'd',
                      'd', 'd',
                      'd', 'd', 'd', 'd', 'i', 'd',
                      'd', 'd', 'd', 'd']
@@ -96,6 +96,10 @@ class MBB(object):
         self.model.set_param_hint(
                 'reff',
                 expr='10 ** (0.5 * (lir - getlir(1, tmbb, beta, lam0)))')
+        self.model.set_param_hint(
+                'lfir',
+                expr='getlir(reff, tmbb, beta, lam0, 60, 1000)')
+
         self.init_pars = self.model.make_params()
         self.init_pars._asteval.symtable.update(getlir=self.get_lir)
 
@@ -240,7 +244,8 @@ class MBB(object):
                     # covar = fitresult.covar
                 out_para_val = (z, be['z'], dl,
                                 bv['lir'], be['lir'],
-                                lfir,
+                                # lfir,
+                                bv['lfir'], be['lfir'],
                                 bv['tmbb'], be['tmbb'],
                                 bv['reff'], be['reff'], md, mderr, ind, chi2,
                                 covar[0, 0], covar[0, 1],
